@@ -1,0 +1,1 @@
+POST https://asuralightnovel.com/novel/{id}/ajax/chapters/
