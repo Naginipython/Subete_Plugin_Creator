@@ -60,6 +60,7 @@ async fn main() {
     let mut page_code = get_js("page");
     
     let html = fetch(page_url.replace("{id}", &chapter_result.chapters[0].id)).await;
+    println!("{html}");
     page_code.push_str(&format!("getChapterPages(`{html}`);"));
     println!("Testing pages...");
     let page_value: Value = rustyscript::evaluate(&page_code).expect("JS works");
@@ -148,7 +149,7 @@ async fn fetch(url: String) -> String {
         .send()
         .await.unwrap();
     let mut data = response.text().await.unwrap();
-    data = data.replace("\\n", " ");
+    data = data.replace("\n", " ").replace('`', "").replace('$', "S");
     let re = regex::Regex::new(r"\s+").unwrap();
     data = re.replace_all(&data, " ").to_string();
     data
@@ -161,7 +162,7 @@ async fn post_fetch(url: String) -> String {
       .send()
       .await.unwrap();
     let mut data = response.text().await.unwrap();
-    data = data.replace("\\n", " ");
+    data = data.replace("\n", " ").replace('`', "").replace('$', "S");
     let re = regex::Regex::new(r"\s+").unwrap();
     data = re.replace_all(&data, " ").to_string();
     data
