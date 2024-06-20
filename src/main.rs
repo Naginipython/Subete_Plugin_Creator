@@ -22,10 +22,11 @@ async fn main() {
     let html = fetch(search_url.replace("{title}", query)).await;
     let search_code1 = format!("{}search(`{}`);", &search_code, &html);
     println!("Testing search...");
-    let search_value: Value = rustyscript::evaluate(&search_code1).unwrap_or_else(|_e| {
+    let search_value: Value = rustyscript::evaluate(&search_code1).unwrap_or_else(|e1| {
         let search_code2 = format!("{}search(JSON.stringify({}));", &search_code, &html);
-        rustyscript::evaluate(&search_code2).unwrap_or_else(|e| {
-            eprintln!("Error: Search script fails; {e}");
+        rustyscript::evaluate(&search_code2).unwrap_or_else(|e2| {
+            eprintln!("Error: Search script fails; {e1}");
+            eprintln!("Error: Search script fails; {e2}");
             std::process::exit(0)
         })
     });
@@ -120,7 +121,7 @@ struct ChapterData {
 }
 
 fn get_js(name: &str) -> String {
-    let mut file = File::open(format!("{}/{}.js", PLUGIN_DIR.get().unwrap(), name)).unwrap();
+    let mut file = File::open(format!("input/{}/{}.js", PLUGIN_DIR.get().unwrap(), name)).unwrap();
     let mut contents = String::new();
     file.read_to_string(&mut contents).unwrap();
     contents = contents.replace("\\n", " ");
@@ -128,7 +129,7 @@ fn get_js(name: &str) -> String {
     re.replace_all(&contents, " ").to_string()
 }
 fn get_url(name: &str) -> String {
-    let mut file = File::open(format!("{}/{}.txt", PLUGIN_DIR.get().unwrap(), name)).unwrap();
+    let mut file = File::open(format!("input/{}/{}.txt", PLUGIN_DIR.get().unwrap(), name)).unwrap();
     let mut contents = String::new();
     file.read_to_string(&mut contents).unwrap();
     contents
@@ -149,7 +150,7 @@ async fn fetch(url: String) -> String {
         .send()
         .await.unwrap();
     let mut data = response.text().await.unwrap();
-    data = data.replace("\n", " ").replace('`', "").replace('$', "S");
+    data = data.replace("\n", " ").replace('`', "").replace("${", "S").replace("\\\"", "'");
     let re = regex::Regex::new(r"\s+").unwrap();
     data = re.replace_all(&data, " ").to_string();
     data
@@ -162,7 +163,7 @@ async fn post_fetch(url: String) -> String {
       .send()
       .await.unwrap();
     let mut data = response.text().await.unwrap();
-    data = data.replace("\n", " ").replace('`', "").replace('$', "S");
+    data = data.replace("\n", " ").replace('`', "").replace("${", "S").replace("\\\"", "'");
     let re = regex::Regex::new(r"\s+").unwrap();
     data = re.replace_all(&data, " ").to_string();
     data
