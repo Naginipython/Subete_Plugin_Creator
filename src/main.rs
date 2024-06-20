@@ -41,7 +41,9 @@ async fn main() {
     let mut chapter_code = get_js("chapter");
     // check for post
     let post_check: Vec<&str> = chapter_url.split_ascii_whitespace().collect();
+    let mut is_chap_extra = json!({});
     let html = if post_check[0] == "POST" {
+        is_chap_extra = json!({"request": "post"});
         post_fetch(post_check[1].replace("{id}", &search_result[0].id)).await
     } else {
         fetch(chapter_url.replace("{id}", &search_result[0].id)).await
@@ -89,6 +91,7 @@ async fn main() {
             "search": get_js("search"),
             "chapters_url": get_url("chapter"),
             "get_chapters": get_js("chapter"),
+            "chapters_extra": is_chap_extra,
             "pages_url": get_url("page"),
             "get_pages": get_js("page")
         });
