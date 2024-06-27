@@ -6,7 +6,7 @@ static PLUGIN_DIR: OnceLock<String> = OnceLock::new();
 
 #[tokio::main]
 async fn main() {
-    let query = "one"; // 'mashle' is easier
+    let query = "isekai"; // 'mashle' is easier
     println!("Welcome to the Subete's Plugin creator!");
     let args: Vec<String> = std::env::args().collect();
     if args.len() != 2 {
@@ -63,7 +63,6 @@ async fn main() {
     let mut page_code = get_js("page");
     
     let html = fetch(page_url.replace("{id}", &chapter_result.chapters[0].id)).await;
-    println!("{html}");
     page_code.push_str(&format!("getChapterPages(`{html}`);"));
     println!("Testing pages...");
     let page_value: Value = rustyscript::evaluate(&page_code).expect("JS works");
@@ -84,16 +83,20 @@ async fn main() {
     input.pop();
     if &input == "manga" || &input == "anime" || &input == "ln" {
         // Setting up file
+        let chap_url: String = get_url("chapter");
+        let chap_url: Vec<&str> = chap_url.split_ascii_whitespace().collect();
         let write: Value = json!({
             "id": PLUGIN_DIR.get().unwrap(),
             "media_type": input,
             "search_url": get_url("search"),
             "search": get_js("search"),
-            "chapters_url": get_url("chapter"),
+            "search_extra": json!({}),
+            "chapters_url": chap_url[1],
             "get_chapters": get_js("chapter"),
             "chapters_extra": is_chap_extra,
             "pages_url": get_url("page"),
-            "get_pages": get_js("page")
+            "get_pages": get_js("page"),
+            "pages_extra": json!({})
         });
         write_js(write);
         println!("Program has completed");
