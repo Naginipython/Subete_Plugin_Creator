@@ -6,20 +6,22 @@ static PLUGIN_DIR: OnceLock<String> = OnceLock::new();
 
 #[tokio::main]
 async fn main() {
-    let query = "isekai"; // 'mashle' is easier
+    let mut query = String::from("one"); // 'mashle' is easier
     println!("Welcome to the Subete's Plugin creator!");
     let args: Vec<String> = std::env::args().collect();
-    if args.len() != 2 {
-        eprintln!("Usage: {} <plugin_dir>", args[0]);
+    if args.len() > 2 {
+        eprintln!("Usage: {} <plugin_dir> optional:<search>", args[0]);
         std::process::exit(1);
     } else if args.len() == 2 {
         PLUGIN_DIR.get_or_init(|| args[1].clone());
+    } else if args.len() == 3 {
+        query = args[2].clone();
     }
 
     let search_url = get_url("search");
     let search_code = get_js("search");
 
-    let html = fetch(search_url.replace("{title}", query)).await;
+    let html = fetch(search_url.replace("{title}", &query)).await;
     let search_code1 = format!("{}search(`{}`);", &search_code, &html);
     println!("Testing search...");
     let search_value: Value = rustyscript::evaluate(&search_code1).unwrap_or_else(|e1| {
@@ -85,13 +87,18 @@ async fn main() {
         // Setting up file
         let chap_url: String = get_url("chapter");
         let chap_url: Vec<&str> = chap_url.split_ascii_whitespace().collect();
+        let chap_url = if chap_url.len() > 1 {
+            chap_url[1]
+        } else {
+            chap_url[0]
+        };
         let write: Value = json!({
             "id": PLUGIN_DIR.get().unwrap(),
             "media_type": input,
             "search_url": get_url("search"),
             "search": get_js("search"),
             "search_extra": json!({}),
-            "chapters_url": chap_url[1],
+            "chapters_url": chap_url,
             "get_chapters": get_js("chapter"),
             "chapters_extra": is_chap_extra,
             "pages_url": get_url("page"),
