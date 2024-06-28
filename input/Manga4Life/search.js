@@ -1,5 +1,4 @@
 function search(html) {
-  console.log("here");
   let retrieved = JSON.parse(html.match(new RegExp(`vm.Directory = (.*?); vm`))[1]);
   let query = JSON.parse(html.match(new RegExp(`vm.Search = (.*?);`))[1]).SeriesName;
   let filtered_retrieve = retrieved.filter(e => 
