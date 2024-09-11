@@ -9,7 +9,6 @@ pub async fn check_chapters(search_result: Vec<Search>) -> Extras {
     // check for post
     let post_check: Vec<&str> = chapter_url.split_ascii_whitespace().collect();
     let mut extra = Extras::new();
-    // anime or manga
     let html = if post_check[0] == "POST" {
         extra.chap_extras = json!({"request": "post"});
         helpers::post_fetch(post_check[1].replace("{id}", &search_result[0].id)).await

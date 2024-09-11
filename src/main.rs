@@ -94,9 +94,23 @@ async fn main() {
             "pages_extra": json!({})
         });
         helpers::write_js(write);
-        println!("Program has completed");
     } else {
-        // todo
+        let write: Value = json!({
+            "id": PLUGIN_DIR.get().unwrap(),
+            "version": "0.0.1",
+            "media_type": media_type.to_str(),
+            "search_url": helpers::get_url("search"),
+            "search": helpers::get_js("search"),
+            "search_extra": json!({}),
+            "episodes_url": helpers::get_url("episode"),
+            "get_episodes": helpers::get_js("episode"),
+            "episodes_extra": json!({}),
+            "videos_url": helpers::get_url("video"),
+            "get_videos": helpers::get_js("video"),
+            "videos_extra": json!({})
+        });
+        helpers::write_js(write);
     }
+    println!("Program has completed");
 
 }

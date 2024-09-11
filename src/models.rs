@@ -8,33 +8,15 @@ pub enum MediaType {
 impl MediaType {
     pub fn from_str(input: &str) -> Option<Self> {
         match input.to_lowercase().as_str() {
-            "manga" => Some(MediaType::Manga),
-            "ln" => Some(MediaType::Ln),
-            "anime" => Some(MediaType::Anime),
+            "manga" | "m" => Some(MediaType::Manga),
+            "ln" | "l" => Some(MediaType::Ln),
+            "anime" | "a" => Some(MediaType::Anime),
             _ => None
-        }
-    }
-    pub fn is_manga(&self) -> bool {
-        match self {
-            MediaType::Manga => true,
-            _ => false
-        }
-    }
-    pub fn is_ln(&self) -> bool {
-        match self {
-            MediaType::Ln => true,
-            _ => false
         }
     }
     pub fn is_manga_or_ln(&self) -> bool {
         match self {
             MediaType::Ln | MediaType::Manga => true,
-            _ => false
-        }
-    }
-    pub fn is_anime(&self) -> bool {
-        match self {
-            MediaType::Anime => true,
             _ => false
         }
     }
@@ -80,14 +62,15 @@ pub struct SearchAnime {
     pub studio: String,
     pub status: String,
     pub description: String,
-    pub episodes: Vec<EpisodeData>
+    pub episodes: Vec<EpisodeData>,
+    pub extra: Option<Value>
 }
 #[derive(Serialize, Debug, Deserialize)]
 pub struct EpisodeData {
     pub id: String,
     pub number: f32,
     pub title: String,
-    pub time: f32,
+    pub watch_time: i64,
     pub completed: bool
 }
 
