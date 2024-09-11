@@ -1,27 +1,46 @@
-use std::{fs::File, io::{self, Read, Write}, sync::OnceLock};
-use serde::{Deserialize, Serialize};
+use std::{io::{self, Write}, sync::OnceLock};
 use serde_json::{json, Value};
+use crate::models::*;
 
-static PLUGIN_DIR: OnceLock<String> = OnceLock::new();
+pub static PLUGIN_DIR: OnceLock<String> = OnceLock::new();
+
+mod models;
+mod chapters;
+mod episodes;
+mod helpers;
 
 #[tokio::main]
 async fn main() {
     let mut query = String::from("one"); // 'mashle' is easier
     println!("Welcome to the Subete's Plugin creator!");
     let args: Vec<String> = std::env::args().collect();
-    if args.len() > 2 {
+    if args.len() > 3 {
         eprintln!("Usage: {} <plugin_dir> optional:<search>", args[0]);
         std::process::exit(1);
     } else if args.len() == 2 {
         PLUGIN_DIR.get_or_init(|| args[1].clone());
     } else if args.len() == 3 {
+        PLUGIN_DIR.get_or_init(|| args[1].clone());
         query = args[2].clone();
     }
 
-    let search_url = get_url("search");
-    let search_code = get_js("search");
+    // Media type 
+    let mut find_media_type: Option<MediaType> = None;
+    while find_media_type.is_none() {
+        print!("What is the media type of this plugin? (manga, anime, ln): ");
+        let mut input: String = String::new();
+        let _ = io::stdout().flush(); // allows to print then stdin
+        io::stdin().read_line(&mut input).expect("Error: Expected input");
+        input.pop();
+        find_media_type = MediaType::from_str(&input)
+    }
+    let media_type = find_media_type.unwrap();
 
-    let html = fetch(search_url.replace("{title}", &query)).await;
+    // Search
+    let search_url = helpers::get_url("search");
+    let search_code = helpers::get_js("search");
+
+    let html = helpers::fetch(search_url.replace("{title}", &query)).await;
     let search_code1 = format!("{}search(`{}`);", &search_code, &html);
     println!("Testing search...");
     let search_value: Value = rustyscript::evaluate(&search_code1).unwrap_or_else(|e1| {
@@ -32,60 +51,28 @@ async fn main() {
             std::process::exit(0)
         })
     });
-    let search_result: Vec<Search> = serde_json::from_value(search_value).unwrap_or_else(|e| {
-        eprintln!("Error: Search script does not include all fields, or fields are wrong type; {e}");
-        std::process::exit(0)
-    });
+    let search_result: SearchResult = if media_type.is_manga_or_ln() {
+        serde_json::from_value(search_value).map(SearchResult::MangaLn).unwrap_or_else(|e| {
+            eprintln!("Error: Search script does not include all fields, or fields are wrong type; {e}");
+            std::process::exit(0)
+        })
+    } else  {
+        serde_json::from_value(search_value).map(SearchResult::Anime).unwrap_or_else(|e| {
+            eprintln!("Error: Search script does not include all fields, or fields are wrong type; {e}");
+            std::process::exit(0)
+        })
+    };
     println!("Search successful");
 
-    // Chapters
-    let chapter_url = get_url("chapter");
-    let mut chapter_code = get_js("chapter");
-    // check for post
-    let post_check: Vec<&str> = chapter_url.split_ascii_whitespace().collect();
-    let mut is_chap_extra = json!({});
-    let html = if post_check[0] == "POST" {
-        is_chap_extra = json!({"request": "post"});
-        post_fetch(post_check[1].replace("{id}", &search_result[0].id)).await
-    } else {
-        fetch(chapter_url.replace("{id}", &search_result[0].id)).await
+    let extras: Extras = match search_result {
+        SearchResult::MangaLn(m) => chapters::check_chapters(m).await,
+        SearchResult::Anime(a) => episodes::check_episodes(a).await,
     };
 
-    chapter_code.push_str(&format!("getChapters(JSON.parse({:?}), `{html}`);", serde_json::to_string(&search_result[0]).unwrap()));
-    println!("Testing chapter...");
-    let chapter_value: Value = rustyscript::evaluate(&chapter_code).expect("JS works");
-    let chapter_result: Search = serde_json::from_value(chapter_value).unwrap_or_else(|e| {
-        eprintln!("Error: Chapter script does not include all fields, or fields are wrong type; {e}");
-        std::process::exit(0)
-    });
-    println!("Chapter successful");
-
-    //Pages
-    let page_url = get_url("page");
-    let mut page_code = get_js("page");
-    
-    let html = fetch(page_url.replace("{id}", &chapter_result.chapters[0].id)).await;
-    page_code.push_str(&format!("getChapterPages(`{html}`);"));
-    println!("Testing pages...");
-    let page_value: Value = rustyscript::evaluate(&page_code).expect("JS works");
-    let page_result: Vec<String> = serde_json::from_value(page_value).unwrap_or_else(|e| {
-        eprintln!("Error: {e}");
-        std::process::exit(0)
-    });
-    if page_result.len() <= 0 {
-        eprintln!("Error: No pages receieved");
-        std::process::exit(0)
-    }
-    println!("Pages successful");
-
-    print!("What is the media type of this plugin? (manga, anime, ln): ");
-    let mut input: String = String::new();
-    let _ = io::stdout().flush(); // allows to print then stdin
-    io::stdin().read_line(&mut input).expect("Error: Expected input");
-    input.pop();
-    if &input == "manga" || &input == "anime" || &input == "ln" {
+    // Creates the JSON
+    if media_type.is_manga_or_ln() {
         // Setting up file
-        let chap_url: String = get_url("chapter");
+        let chap_url: String = helpers::get_url("chapter");
         let chap_url: Vec<&str> = chap_url.split_ascii_whitespace().collect();
         let chap_url = if chap_url.len() > 1 {
             chap_url[1]
@@ -94,90 +81,22 @@ async fn main() {
         };
         let write: Value = json!({
             "id": PLUGIN_DIR.get().unwrap(),
-            "media_type": input,
-            "search_url": get_url("search"),
-            "search": get_js("search"),
+            "version": "0.0.1",
+            "media_type": media_type.to_str(),
+            "search_url": helpers::get_url("search"),
+            "search": helpers::get_js("search"),
             "search_extra": json!({}),
             "chapters_url": chap_url,
-            "get_chapters": get_js("chapter"),
-            "chapters_extra": is_chap_extra,
-            "pages_url": get_url("page"),
-            "get_pages": get_js("page"),
+            "get_chapters": helpers::get_js("chapter"),
+            "chapters_extra": extras.chap_extras,
+            "pages_url": helpers::get_url("page"),
+            "get_pages": helpers::get_js("page"),
             "pages_extra": json!({})
         });
-        write_js(write);
+        helpers::write_js(write);
         println!("Program has completed");
     } else {
-        eprintln!("Error: valid media types are 'manga', 'anime', or 'ln'");
+        // todo
     }
 
-}
-
-#[derive(Serialize, Debug, Deserialize)]
-struct Search {
-    id: String,
-    title: String,
-    img: String,
-    plugin: String,
-    authors: String,
-    artists: String,
-    description: String,
-    chapters: Vec<ChapterData>
-}
-#[derive(Serialize, Debug, Deserialize)]
-struct ChapterData {
-    id: String,
-    number: f32,
-    title: String,
-    page: i32,
-    completed: bool
-}
-
-fn get_js(name: &str) -> String {
-    let mut file = File::open(format!("input/{}/{}.js", PLUGIN_DIR.get().unwrap(), name)).unwrap();
-    let mut contents = String::new();
-    file.read_to_string(&mut contents).unwrap();
-    contents = contents.replace("\\n", " ");
-    let re = regex::Regex::new(r"\s+").unwrap();
-    re.replace_all(&contents, " ").to_string()
-}
-fn get_url(name: &str) -> String {
-    let mut file = File::open(format!("input/{}/{}.txt", PLUGIN_DIR.get().unwrap(), name)).unwrap();
-    let mut contents = String::new();
-    file.read_to_string(&mut contents).unwrap();
-    contents
-}
-fn write_js(data: Value) {
-    println!("Creating json file...");
-    let json_string = serde_json::to_string_pretty(&data).unwrap();
-    std::fs::create_dir_all("output").unwrap();
-    let mut file = File::create(format!("output/{}.json", PLUGIN_DIR.get().unwrap())).unwrap();
-    file.write_all(json_string.as_bytes()).unwrap();
-}
-async fn fetch(url: String) -> String {
-    println!("Fetching...");
-    let user_agent = "Mozilla/5.0 (Linux; Android 13; SM-S901U) AppleWebkit/537.36 (KHTML, like Gecko Chrome/112.0.0.0 Mobile Safari/537.36";
-    let client = reqwest::Client::new();
-    let response = client.get(url)
-        .header(reqwest::header::USER_AGENT, user_agent)
-        .send()
-        .await.unwrap();
-    let mut data = response.text().await.unwrap();
-    data = data.replace("\n", " ").replace('`', "").replace("${", "S").replace("\\\"", "'");
-    let re = regex::Regex::new(r"\s+").unwrap();
-    data = re.replace_all(&data, " ").to_string();
-    data
-}
-async fn post_fetch(url: String) -> String {
-    let user_agent = "Mozilla/5.0 (Linux; Android 13; SM-S901U) AppleWebkit/537.36 (KHTML, like Gecko Chrome/112.0.0.0 Mobile Safari/537.36";
-    let client = reqwest::Client::new();
-    let response = client.post(url)
-      .header(reqwest::header::USER_AGENT, user_agent)
-      .send()
-      .await.unwrap();
-    let mut data = response.text().await.unwrap();
-    data = data.replace("\n", " ").replace('`', "").replace("${", "S").replace("\\\"", "'");
-    let re = regex::Regex::new(r"\s+").unwrap();
-    data = re.replace_all(&data, " ").to_string();
-    data
 }
