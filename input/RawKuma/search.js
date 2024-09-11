@@ -7,7 +7,7 @@ function search(html) {
       lib_item.id = match[2];
       lib_item.title = match[3];
       lib_item.img = match[5];
-      lib_item.plugin = 'MangaRaw';
+      lib_item.plugin = 'RawKuma';
       lib_item.authors = '';
       lib_item.artists = '';
       lib_item.description = '';

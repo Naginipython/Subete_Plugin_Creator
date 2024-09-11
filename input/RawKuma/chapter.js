@@ -18,7 +18,8 @@ function getChapters(json, html) {
     let lib_item = {};
     lib_item.id = match[1];
     lib_item.title = '';
-    lib_item.number = parseInt(match[2].match(new RegExp(`\\d+`))[0]);
+    let num_match = match[2].match(new RegExp(`\\d+`));
+    lib_item.number = num_match != null? parseInt(num_match[0]) : 0;
     lib_item.page = 1;
     lib_item.completed = false;
     data.push(lib_item);
