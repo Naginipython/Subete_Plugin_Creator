@@ -1,4 +1,5 @@
 function getChapters(json, html) {
+  json = JSON.parse(json);
   let data = [];
   const regex = new RegExp(`<li class="wp-manga-chapter "> (.*?) </li>`, 'gi');
   let data_to_parse = [];

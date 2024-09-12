@@ -1,4 +1,5 @@
 use std::{io::{self, Write}, sync::OnceLock};
+use quickjs_runtime::{builder::QuickJsRuntimeBuilder, jsutils::Script, values::JsValueConvertable};
 use serde_json::{json, Value};
 use crate::models::*;
 
@@ -41,16 +42,24 @@ async fn main() {
     let search_code = helpers::get_js("search");
 
     let html = helpers::fetch(search_url.replace("{title}", &query)).await;
-    let search_code1 = format!("{}search(`{}`);", &search_code, &html);
+    // let search_code1 = format!("{}search(`{}`);", &search_code, &html);
     println!("Testing search...");
-    let search_value: Value = rustyscript::evaluate(&search_code1).unwrap_or_else(|e1| {
-        let search_code2 = format!("{}search(JSON.stringify({}));", &search_code, &html);
-        rustyscript::evaluate(&search_code2).unwrap_or_else(|e2| {
-            eprintln!("Error: Search script fails; {e1}");
-            eprintln!("Error: Search script fails; {e2}");
-            std::process::exit(0)
-        })
-    });
+    // let search_value: Value = rustyscript::evaluate(&search_code1).unwrap_or_else(|e1| {
+    //     let search_code2 = format!("{}search(JSON.stringify({}));", &search_code, &html);
+    //     rustyscript::evaluate(&search_code2).unwrap_or_else(|e2| {
+    //         eprintln!("Error: Search script fails; {e1}");
+    //         eprintln!("Error: Search script fails; {e2}");
+    //         std::process::exit(0)
+    //     })
+    // });
+    let runtime = QuickJsRuntimeBuilder::new().build();
+    let script = Script::new("search.js", &search_code);
+    runtime.eval_sync(None, script).ok().expect("script failed");
+    let search_value: Value = runtime
+        .invoke_function_sync(None, &[], "search", vec![html.to_js_value_facade()])
+        .unwrap().to_serde_value().await.unwrap();
+
+
     let search_result: SearchResult = if media_type.is_manga_or_ln() {
         serde_json::from_value(search_value).map(SearchResult::MangaLn).unwrap_or_else(|e| {
             eprintln!("Error: Search script does not include all fields, or fields are wrong type; {e}");

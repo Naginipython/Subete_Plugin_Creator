@@ -1,4 +1,5 @@
 function getChapters(json, html) {
+  json = JSON.parse(json);
   let retrieved = JSON.parse(html.match(new RegExp(`vm.Chapters = (.*?);`))[1]);
   json.chapters = retrieved.map(e => {
     let decimal = parseFloat('0.'+e['Chapter'][5]);

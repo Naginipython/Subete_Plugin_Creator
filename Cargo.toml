@@ -10,7 +10,8 @@ hex-literal = "0.3"
 base64 = "0.13"
 regex = "1.10.5"
 reqwest = "0.12.5"
-rustyscript = "0.4.5"
 serde = { version = "1.0.203", features = ["derive"] }
 serde_json = "1.0.117"
 tokio = { version = "1.38.0", features = ["full"] }
+quickjs_runtime = "0.13.4"
+green_copper_runtime =  { git = 'https://github.com/HiRoFa/GreenCopperRuntime', branch="main" }

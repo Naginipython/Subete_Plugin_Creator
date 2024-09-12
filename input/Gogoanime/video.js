@@ -4,6 +4,7 @@ function getEpisodeVideo(html) {
 }
 
 function next(json, html) {
+    json = JSON.parse(json);
     iv = html.match(new RegExp('wrapper container-(.*?)"'))[1];
     secretKey = html.match(new RegExp('body class="container-(.*?)"'))[1];
     decryptionKey = html.match(new RegExp('videocontent-(.*?)"'))[1];
@@ -31,6 +32,7 @@ function next(json, html) {
 }
 
 function next2(json, html) {
+    json = JSON.parse(json);
     let data = JSON.parse(html).data;
     return {
         next: "CRYPTO",

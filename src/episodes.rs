@@ -1,3 +1,4 @@
+use quickjs_runtime::{builder::QuickJsRuntimeBuilder, jsutils::Script, values::JsValueConvertable};
 use serde_json::{json, Value};
 
 use crate::{helpers, Extras, SearchAnime};
@@ -16,9 +17,13 @@ pub async fn check_episodes(search_result: Vec<SearchAnime>) -> Extras {
         helpers::fetch(episode_url.replace("{id}", &search_result[0].id)).await
     };
 
-    let ep_code2 = format!("{} getEpisodes(JSON.parse({:?}), `{html}`);", &episode_code, serde_json::to_string(&search_result[0]).unwrap());
     println!("Testing episode...");
-    let episode_value: Value = rustyscript::evaluate(&ep_code2).expect("JS works");
+    let runtime = QuickJsRuntimeBuilder::new().build();
+    let script = Script::new("episodes.js", &episode_code);
+    runtime.eval_sync(None, script).ok().expect("script failed");
+    let episode_value = runtime
+        .invoke_function_sync(None, &[], "getEpisodes", vec![serde_json::to_string(&search_result[0]).unwrap().to_js_value_facade(), html.to_js_value_facade()])
+        .unwrap().to_serde_value().await.unwrap();
     let mut episode_result: SearchAnime = serde_json::from_value(episode_value).unwrap_or_else(|e| {
         eprintln!("Error: Chapter script does not include all fields, or fields are wrong type; {e}");
         std::process::exit(0)
@@ -28,8 +33,9 @@ pub async fn check_episodes(search_result: Vec<SearchAnime>) -> Extras {
         while let Some(next) = e.get("next") {
             // If there is a next link, call it
             let html = helpers::fetch(String::from(next.as_str().unwrap())).await;
-            let ep_code3 = format!("{} next(JSON.parse({:?}), `{html}`);", &episode_code, serde_json::to_string(&search_result[0]).unwrap());
-            let episode_value: Value = rustyscript::evaluate(&ep_code3).expect("JS works");
+            let episode_value = runtime
+                .invoke_function_sync(None, &[], "next", vec![serde_json::to_string(&search_result[0]).unwrap().to_js_value_facade(), html.to_js_value_facade()])
+                .unwrap().to_serde_value().await.unwrap();
             episode_result = serde_json::from_value(episode_value).unwrap_or_else(|e| {
                 eprintln!("Error: Chapter script does not include all fields, or fields are wrong type; {e}");
                 std::process::exit(0)
@@ -44,9 +50,14 @@ pub async fn check_episodes(search_result: Vec<SearchAnime>) -> Extras {
     let video_code = helpers::get_js("video");
 
     let html = helpers::fetch(video_url.replace("{id}", &episode_result.episodes[0].id)).await;
-    let video_code2 = format!("{} getEpisodeVideo(`{html}`);", video_code);
+    // let video_code2 = format!("{} getEpisodeVideo(`{html}`);", video_code);
     println!("Testing video...");
-    let video_value: Value = rustyscript::evaluate(&video_code2).expect("JS works");
+    // let video_value: Value = rustyscript::evaluate(&video_code2).expect("JS works");
+    let script = Script::new("video.js", &video_code);
+    runtime.eval_sync(None, script).ok().expect("script failed");
+    let video_value = runtime
+        .invoke_function_sync(None, &[], "getEpisodeVideo", vec![html.to_js_value_facade()])
+        .unwrap().to_serde_value().await.unwrap();
     let mut video_result: Value = serde_json::from_value(video_value).unwrap_or_else(|e| {
         eprintln!("Error: {e}");
         std::process::exit(0)
@@ -79,13 +90,18 @@ pub async fn check_episodes(search_result: Vec<SearchAnime>) -> Extras {
             helpers::fetch(String::from(next.as_str().unwrap())).await
         };
 
-        let video_code3 = format!(
-            "{} next{}(JSON.parse({:?}), `{html}`);", 
-            &video_code, 
-            next_count,
-            serde_json::to_string(&video_result).unwrap()
-        );
-        let video_value: Value = rustyscript::evaluate(&video_code3).expect("JS works");
+        // let video_code3 = format!(
+        //     "{} next{}(JSON.parse({:?}), `{html}`);", 
+        //     &video_code, 
+        //     next_count,
+        //     serde_json::to_string(&video_result).unwrap()
+        // );
+        // let video_value: Value = rustyscript::evaluate(&video_code3).expect("JS works");
+        println!("next{next_count}");
+        println!("{:?}", video_result);
+        let video_value = runtime
+            .invoke_function_sync(None, &[], &format!("next{next_count}"), vec![serde_json::to_string(&video_result).unwrap().to_js_value_facade(), html.to_js_value_facade()])
+            .unwrap().to_serde_value().await.unwrap();
         video_result = serde_json::from_value(video_value).unwrap_or_else(|e| {
             eprintln!("Error: Chapter script does not include all fields, or fields are wrong type; {e}");
             std::process::exit(0)

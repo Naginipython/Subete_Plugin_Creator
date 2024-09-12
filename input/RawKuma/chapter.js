@@ -1,4 +1,5 @@
 function getChapters(json, html) {
+  json = JSON.parse(json);
   const auth_regex = new RegExp(`<b>Author</b> <span> (.*?) </span>`, 'gi');
   json.authors = auth_regex.exec(html)[1];
   const art_regex = new RegExp(`<b>Artist</b> <span> (.*?) </span>`, 'gi');

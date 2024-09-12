@@ -1,4 +1,5 @@
 function getEpisodes(json, html) {
+    json = JSON.parse(json);
     const jsonRegex = new RegExp(`<div class="anime_info_body_bg">(.*?)</p> </div>`, 'gi');
     const infoArea = jsonRegex.exec(html)[1];
     const descRegex = new RegExp(`"description"><p>(.*?)</p>`);
@@ -17,6 +18,7 @@ function getEpisodes(json, html) {
 }
 
 function next(json, html) {
+    json = JSON.parse(json);
     delete json.extra;
     let data = [];
     const epRegex = new RegExp(`<li>(.*?)</li>`, 'gi');

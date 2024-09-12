@@ -1,4 +1,5 @@
 function getChapters(json, html) {
+  json = JSON.parse(json);
   html = JSON.parse(html); 
   json.chapters = html['data'].map(e => {
     return {
