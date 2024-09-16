@@ -45,7 +45,7 @@ function next2(json, html) {
 }
 
 function next3(json, html) {
-    console.log("here");
+    json = JSON.parse(json);
     let sourceList = JSON.parse(json.data);
     return sourceList.source[0].file;
 }

@@ -97,8 +97,8 @@ pub async fn check_episodes(search_result: Vec<SearchAnime>) -> Extras {
         //     serde_json::to_string(&video_result).unwrap()
         // );
         // let video_value: Value = rustyscript::evaluate(&video_code3).expect("JS works");
-        println!("next{next_count}");
-        println!("{:?}", video_result);
+        // println!("next{next_count}");
+        // println!("{:?}", video_result);
         let video_value = runtime
             .invoke_function_sync(None, &[], &format!("next{next_count}"), vec![serde_json::to_string(&video_result).unwrap().to_js_value_facade(), html.to_js_value_facade()])
             .unwrap().to_serde_value().await.unwrap();
