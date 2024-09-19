@@ -2,7 +2,7 @@ function getEpisodes(json, html) {
     json = JSON.parse(json);
     const jsonRegex = new RegExp(`<div class="anime_info_body_bg">(.*?)</p> </div>`, 'gi');
     const infoArea = jsonRegex.exec(html)[1];
-    const descRegex = new RegExp(`"description"><p>(.*?)</p>`);
+    const descRegex = new RegExp(`"description">(.*?)</div>`);
     json.description = descRegex.exec(infoArea)[1];
     const statusRegex = new RegExp(`Status: </span>(.*?)>(.*?)</a>`);
     json.status = statusRegex.exec(infoArea)[2];
