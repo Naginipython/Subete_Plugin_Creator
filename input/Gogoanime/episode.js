@@ -31,6 +31,7 @@ function next(json, html) {
         ep.number = parseInt(numRegex.exec(match)[1]);
         ep.title = "";
         ep.watch_time = 0;
+        ep.duration = 0;
         ep.completed = false;
         data.push(ep);
     }
